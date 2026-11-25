@@ -30,8 +30,10 @@ FORBIDDEN = ("\n", "\r", "\t")
 def validate(line: str) -> None:
     """The bounty gate: one line, 1-140 characters, no control chars."""
     if not 1 <= len(line) <= MAX_CHARS:
+        preview = line[:40] + ("..." if len(line) > 40 else "")
         raise ValueError(
-            f"line must be 1-{MAX_CHARS} characters, got {len(line)}"
+            f"line must be 1-{MAX_CHARS} characters, got {len(line)} "
+            f"for line: {preview!r}"
         )
     if any(ch in line for ch in FORBIDDEN):
         raise ValueError("line must be a single line (no line breaks or tabs)")
@@ -53,6 +55,11 @@ def write_entry(line: str, out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(line, encoding="utf-8")
     os.chmod(out_path, 0o644)
+    mode = os.stat(out_path).st_mode & 0o777
+    if mode != 0o644:
+        raise ValueError(
+            f"permission check failed for {out_path}: mode is {oct(mode)}, expected 0o644"
+        )
     if out_path.read_text(encoding="utf-8") != line:
         raise ValueError(f"round-trip check failed for {out_path}")
 
